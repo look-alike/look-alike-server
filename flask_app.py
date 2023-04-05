@@ -19,7 +19,7 @@ cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 
 # Load trained celebrity embeddings
-with open('trained_celebrity_embeddings.pkl', 'rb') as f:
+with open('./trained_celebrity_embeddings.pkl', 'rb') as f:
     trained_embeddings_dict = pickle.load(f)
 
 
@@ -54,7 +54,7 @@ num_classes = 11  # 분류할 클래스의 수
 device = torch.device('cpu')
 
 model = CustomArcFaceModel(num_classes)
-model.load_state_dict(torch.load('arcface.pth', map_location=torch.device('cpu')))
+model.load_state_dict(torch.load('./arcface.pth', map_location=torch.device('cpu')))
 
 model.eval()
 
@@ -65,7 +65,7 @@ preprocess = A.Compose([
 ])
 
 def crop_face(image):
-    face_cascade = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
+    face_cascade = cv2.CascadeClassifier("./haarcascade_frontalface_default.xml")
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
@@ -86,6 +86,11 @@ def predict_celebrity(image):
 
         closest_celebrity, max_similarity = model.find_most_similar_celebrity(user_face_embedding, trained_embeddings)
         return [closest_celebrity, max_similarity.item()]
+    
+@app.route('/')
+@cross_origin
+def index():
+    return 'success'
 
 @app.route('/predict', methods=['POST'])
 @cross_origin()
@@ -105,5 +110,5 @@ def predict():
         return jsonify({'error': 'Error occurred during prediction'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=4000)
+    app.run(debug=False, host='0.0.0.0', port=4000)
 
