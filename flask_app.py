@@ -40,11 +40,14 @@ for celebrity_initial in celebrity_initial_list:
     threshold[celebrity_initial] = sum
 
 def get_initial(number):
-    sorted_initials = sorted(threshold.items(), key=lambda x: x[1])
+    if number is None:  # number가 None인 경우 체크
+        return None
+    else:
+        sorted_initials = sorted(threshold.items(), key=lambda x: x[1])
 
-    for i in range(len(sorted_initials) - 1):
-        if sorted_initials[i][1] < number <= sorted_initials[i + 1][1]:
-            return sorted_initials[i + 1][0]
+        for i in range(len(sorted_initials) - 1):
+            if sorted_initials[i][1] < number <= sorted_initials[i + 1][1]:
+                return sorted_initials[i + 1][0]
 
     return None
 
@@ -71,16 +74,15 @@ def crop_face(image):
     for (x, y, w, h) in faces:
         cropped_image = image[y: y + h, x: x + w]
         resized_image = cv2.resize(cropped_image, (224, 224))
-        if resized_image:
+        if resized_image.shape[0] > 0 and resized_image.shape[1] > 0: # 이미지가 존재하는지 확인
             return resized_image
-        else:
-            return 404
+    return None  # 404 대신 None 반환
 
 def predict_celebrity(image):
     with torch.no_grad():
         cropped_image = crop_face(image)
-        if cropped_image == 404:
-            return 404
+        if cropped_image is None:  # None인 경우 체크
+            return [None, 0]  # celebrity_initial 및 정확도를 None, 0으로 설정
         else:
             image = preprocess(image=cropped_image)['image']
             image = image.float() / 255.0
