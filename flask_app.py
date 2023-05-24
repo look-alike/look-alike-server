@@ -66,25 +66,29 @@ preprocess = A.Compose([
 def crop_face(image):
     face_cascade = cv2.CascadeClassifier("./haarcascade_frontalface_default.xml")
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+    faces = face_cascade.detectMultiScale(gray, 1.2, 5)
 
     for (x, y, w, h) in faces:
         cropped_image = image[y: y + h, x: x + w]
         resized_image = cv2.resize(cropped_image, (224, 224))
-        return resized_image
-
-    return image
+        if resized_image:
+            return resized_image
+        else:
+            return 404
 
 def predict_celebrity(image):
     with torch.no_grad():
-        image = crop_face(image)
-        image = preprocess(image=image)['image']
-        image = image.float() / 255.0
-        image = image.unsqueeze(0).to(device)
-        user_face_embedding = model(image).squeeze()
+        cropped_image = crop_face(image)
+        if cropped_image == 404:
+            return 404
+        else:
+            image = preprocess(image=cropped_image)['image']
+            image = image.float() / 255.0
+            image = image.unsqueeze(0).to(device)
+            user_face_embedding = model(image).squeeze()
 
-        closest_celebrity, max_similarity = model.find_most_similar_celebrity(user_face_embedding, trained_embeddings)
-        return [closest_celebrity, max_similarity.item()]
+            closest_celebrity, max_similarity = model.find_most_similar_celebrity(user_face_embedding, trained_embeddings)
+            return [closest_celebrity, max_similarity.item()]
     
 @app.route('/')
 @cross_origin
@@ -103,11 +107,12 @@ def predict():
 
         prediction = predict_celebrity(image)
         celebrity_initial = get_initial(prediction[0])
+        print('이니셜:', celebrity_initial, '정확도:', prediction[1])
         return jsonify({'celebrity_initial': celebrity_initial, 'accuracy': prediction[1]})
     except Exception as e:
         print(e)
         return jsonify({'error': 'Error occurred during prediction'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port=4000)
+    app.run(debug=True, host='0.0.0.0', port=4000)
 
